@@ -21,9 +21,9 @@ import (
 	"github.com/zeebo/errs"
 	"go.uber.org/zap"
 
+	"github.com/deweb-services/gateway-st/internal/wizard"
 	"storj.io/common/base58"
 	"storj.io/common/fpath"
-	"storj.io/gateway/internal/wizard"
 	"storj.io/gateway/miniogw"
 	minio "storj.io/minio/cmd"
 	"storj.io/private/cfgstruct"
