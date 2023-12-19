@@ -13,7 +13,8 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/term v0.11.0
 	storj.io/common v0.0.0-20231130134106-1fa84867e323
-	storj.io/minio v0.0.0-20231122123534-730e38e5b7ab
+	storj.io/gateway v1.9.0
+	storj.io/minio v0.0.0-20230901173759-f1d4dd341feb
 	storj.io/private v0.0.0-20230918125712-2a31a93e18ab
 	storj.io/uplink v1.12.3-0.20231205090325-b1a25d92efca
 )
@@ -22,15 +23,13 @@ require (
 	git.apache.org/thrift.git v0.13.0 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.2 // indirect
 	github.com/Azure/azure-storage-blob-go v0.10.0 // indirect
-	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
-	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
-	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20200615164410-66371956d46c // indirect
 	github.com/Shopify/sarama v1.27.2 // indirect
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/VividCortex/ewma v1.1.1 // indirect
 	github.com/alecthomas/participle v0.2.1 // indirect
 	github.com/apache/thrift v0.13.0 // indirect
+	github.com/armon/go-metrics v0.0.0-20190430140413-ec5e00d3c878 // indirect
 	github.com/bcicen/jstream v1.0.1 // indirect
 	github.com/beevik/ntp v0.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -38,6 +37,7 @@ require (
 	github.com/calebcase/tmpfile v1.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cheggaaa/pb v1.0.29 // indirect
+	github.com/colinmarc/hdfs/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dchest/siphash v1.2.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
@@ -64,13 +64,15 @@ require (
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/hashicorp/go-hclog v0.14.1 // indirect
-	github.com/hashicorp/go-msgpack v1.1.5 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/raft v1.2.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
+	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
 	github.com/jcmturner/gofork v1.0.0 // indirect
+	github.com/jcmturner/goidentity/v6 v6.0.1 // indirect
+	github.com/jcmturner/gokrb5/v8 v8.4.2 // indirect
+	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/jtolds/tracetagger/v2 v2.0.0-rc5 // indirect
@@ -148,7 +150,6 @@ require (
 	github.com/zeebo/incenc v0.0.0-20180505221441-0d92902eec54 // indirect
 	github.com/zeebo/mwc v0.0.4 // indirect
 	github.com/zeebo/structs v1.0.3-0.20230601144555-f2db46069602 // indirect
-	go.etcd.io/bbolt v1.3.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
