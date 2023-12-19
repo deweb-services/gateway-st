@@ -19,6 +19,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/tags"
 	"github.com/spacemonkeygo/monkit/v3"
 	"github.com/zeebo/errs"
+	"go.uber.org/zap"
 
 	"storj.io/common/memory"
 	"storj.io/common/sync2"
@@ -132,8 +133,9 @@ func (gateway *Gateway) Name() string {
 }
 
 // NewGatewayLayer implements cmd.Gateway.
-func (gateway *Gateway) NewGatewayLayer(creds auth.Credentials) (minio.ObjectLayer, error) {
+func (gateway *Gateway) NewGatewayLayer(logger *zap.SugaredLogger, creds auth.Credentials) (minio.ObjectLayer, error) {
 	return &gatewayLayer{
+		logger:              logger,
 		compatibilityConfig: gateway.compatibilityConfig,
 	}, nil
 }
@@ -144,6 +146,7 @@ func (gateway *Gateway) Production() bool {
 }
 
 type gatewayLayer struct {
+	logger *zap.SugaredLogger
 	minio.GatewayUnsupported
 	compatibilityConfig S3CompatibilityConfig
 }
@@ -888,32 +891,42 @@ func (layer *gatewayLayer) GetObjectInfo(ctx context.Context, bucket, objectPath
 
 func (layer *gatewayLayer) PutObject(ctx context.Context, bucket, object string, data *minio.PutObjReader, opts minio.ObjectOptions) (objInfo minio.ObjectInfo, err error) {
 	defer mon.Task()(&ctx)(&err)
-
+	layer.logger.Debugf("PutObject miniogw started: %s", err)
 	if err := ValidateBucket(ctx, bucket); err != nil {
+		layer.logger.Debug("PutObject error: bucket name invalid")
 		return minio.ObjectInfo{}, minio.BucketNameInvalid{Bucket: bucket}
 	}
 
 	if len(object) > memory.KiB.Int() { // https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html
+		layer.logger.Debug("PutObject error: object name too long")
 		return minio.ObjectInfo{}, minio.ObjectNameTooLong{Bucket: bucket, Object: object}
 	}
 
 	if storageClass, ok := opts.UserDefined[xhttp.AmzStorageClass]; ok && storageClass != storageclass.STANDARD {
+		layer.logger.Debug("PutObject error: storage class not supported")
 		return minio.ObjectInfo{}, minio.NotImplemented{Message: "PutObject (storage class)"}
 	}
 
 	project, err := projectFromContext(ctx, bucket, object)
 	if err != nil {
+		layer.logger.Debugf("PutObject error: failed to get project from context: %s", err)
 		return minio.ObjectInfo{}, err
 	}
+
+	layer.logger.Debugf("PutObject project: %#+v", project)
 
 	// TODO this should be removed and implemented on satellite side
 	defer func() {
 		err = checkBucketError(ctx, project, bucket, object, err)
+		if err != nil {
+			layer.logger.Debugf("PutObject error: checkBucketError: %s", err)
+		}
 	}()
 
 	if data == nil {
 		hashReader, err := hash.NewReader(bytes.NewReader([]byte{}), 0, "", "", 0)
 		if err != nil {
+			layer.logger.Debugf("PutObject error: failed to create new reader: %s", err)
 			return minio.ObjectInfo{}, ConvertError(err, bucket, object)
 		}
 		data = minio.NewPutObjReader(hashReader)
@@ -921,12 +934,14 @@ func (layer *gatewayLayer) PutObject(ctx context.Context, bucket, object string,
 
 	e, err := parseTTL(opts.UserDefined)
 	if err != nil {
+		layer.logger.Debugf("PutObject error: err invalid TTL: %s", err)
 		return minio.ObjectInfo{}, ErrInvalidTTL
 	}
 	upload, err := versioned.UploadObject(ctx, project, bucket, object, &uplink.UploadOptions{
 		Expires: e,
 	})
 	if err != nil {
+		layer.logger.Debugf("PutObject error: upload object error: %s", err)
 		return minio.ObjectInfo{}, ConvertError(err, bucket, object)
 	}
 
@@ -947,6 +962,7 @@ func (layer *gatewayLayer) PutObject(ctx context.Context, bucket, object string,
 
 	err = upload.SetCustomMetadata(ctx, opts.UserDefined)
 	if err != nil {
+		layer.logger.Debugf("PutObject error: set custom metadata error: %s", err)
 		abortErr := upload.Abort()
 		err = errs.Combine(err, abortErr)
 		return minio.ObjectInfo{}, ConvertError(err, bucket, object)
@@ -954,8 +970,10 @@ func (layer *gatewayLayer) PutObject(ctx context.Context, bucket, object string,
 
 	err = upload.Commit()
 	if err != nil {
+		layer.logger.Debugf("PutObject error: commit upload error: %s", err)
 		return minio.ObjectInfo{}, ConvertError(err, bucket, object)
 	}
+	layer.logger.Debugf("PutObject miniogw finished: %s", err)
 
 	return minioVersionedObjectInfo(bucket, etag, upload.Info()), nil
 }
