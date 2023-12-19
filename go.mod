@@ -1,4 +1,4 @@
-module storj.io/gateway
+module github.com/deweb-services/gateway-st
 
 go 1.19
 
