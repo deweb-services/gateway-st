@@ -409,7 +409,7 @@ func (layer *gatewayLayer) CompleteMultipartUpload(ctx context.Context, bucket, 
 	metadata = metadata.Clone()
 	metadata["s3:etag"] = etag
 
-	obj, err := versioned.CommitUpload(ctx, project, bucket, object, uploadID, &uplink.CommitUploadOptions{
+	obj, err := versioned.CommitUpload(context.Background(), project, bucket, object, uploadID, &uplink.CommitUploadOptions{
 		CustomMetadata: metadata,
 	})
 	if err != nil {
