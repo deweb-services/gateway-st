@@ -822,7 +822,7 @@ func (layer *gatewayLayer) GetObjectNInfo(ctx context.Context, bucket, object st
 		return nil, ConvertError(err, bucket, object)
 	}
 
-	download, err := versioned.DownloadObject(ctx, project, bucket, object, version, downloadOpts)
+	download, err := versioned.DownloadObject(context.Background(), project, bucket, object, version, downloadOpts)
 	if err != nil {
 		return nil, ConvertError(err, bucket, object)
 	}
