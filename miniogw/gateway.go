@@ -809,7 +809,7 @@ func (layer *gatewayLayer) GetObjectNInfo(ctx context.Context, bucket, object st
 
 	// TODO this should be removed and implemented on satellite side
 	defer func() {
-		err = checkBucketError(ctx, project, bucket, object, err)
+		err = checkBucketError(context.Background(), project, bucket, object, err)
 	}()
 
 	downloadOpts, err := rangeSpecToDownloadOptions(rs)
@@ -886,7 +886,7 @@ func (layer *gatewayLayer) GetObjectInfo(ctx context.Context, bucket, objectPath
 	object, err := versioned.StatObject(context.Background(), project, bucket, objectPath, version)
 	if err != nil {
 		// TODO this should be removed and implemented on satellite side
-		err = checkBucketError(ctx, project, bucket, objectPath, err)
+		err = checkBucketError(context.Background(), project, bucket, objectPath, err)
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
 
@@ -921,7 +921,7 @@ func (layer *gatewayLayer) PutObject(ctx context.Context, bucket, object string,
 
 	// TODO this should be removed and implemented on satellite side
 	defer func() {
-		err = checkBucketError(ctx, project, bucket, object, err)
+		err = checkBucketError(context.Background(), project, bucket, object, err)
 		if err != nil {
 			layer.logger.Infof("PutObject error: checkBucketError: %s", err)
 		}
@@ -1165,7 +1165,7 @@ func (layer *gatewayLayer) PutObjectTags(ctx context.Context, bucket, objectPath
 	object, err := project.StatObject(context.Background(), bucket, objectPath)
 	if err != nil {
 		// TODO this should be removed and implemented on satellite side
-		err = checkBucketError(ctx, project, bucket, objectPath, err)
+		err = checkBucketError(context.Background(), project, bucket, objectPath, err)
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
 
@@ -1208,7 +1208,7 @@ func (layer *gatewayLayer) GetObjectTags(ctx context.Context, bucket, objectPath
 	object, err := versioned.StatObject(context.Background(), project, bucket, objectPath, version)
 	if err != nil {
 		// TODO this should be removed and implemented on satellite side
-		err = checkBucketError(ctx, project, bucket, objectPath, err)
+		err = checkBucketError(context.Background(), project, bucket, objectPath, err)
 		return nil, ConvertError(err, bucket, objectPath)
 	}
 
@@ -1240,7 +1240,7 @@ func (layer *gatewayLayer) DeleteObjectTags(ctx context.Context, bucket, objectP
 	object, err := project.StatObject(ctx, bucket, objectPath)
 	if err != nil {
 		// TODO this should be removed and implemented on satellite side
-		err = checkBucketError(ctx, project, bucket, objectPath, err)
+		err = checkBucketError(context.Background(), project, bucket, objectPath, err)
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
 
