@@ -751,7 +751,7 @@ func (layer *gatewayLayer) ListObjectVersions(ctx context.Context, bucket, prefi
 		return minio.ListObjectVersionsInfo{}, err
 	}
 
-	items, more, err := versioned.ListObjectVersions(ctx, project, bucket, &versioned.ListObjectVersionsOptions{
+	items, more, err := versioned.ListObjectVersions(context.Background(), project, bucket, &versioned.ListObjectVersionsOptions{
 		Prefix:        prefix,
 		Cursor:        strings.TrimPrefix(marker, prefix),
 		VersionCursor: version,
@@ -809,7 +809,7 @@ func (layer *gatewayLayer) GetObjectNInfo(ctx context.Context, bucket, object st
 
 	// TODO this should be removed and implemented on satellite side
 	defer func() {
-		err = checkBucketError(ctx, project, bucket, object, err)
+		err = checkBucketError(context.Background(), project, bucket, object, err)
 	}()
 
 	downloadOpts, err := rangeSpecToDownloadOptions(rs)
@@ -883,10 +883,10 @@ func (layer *gatewayLayer) GetObjectInfo(ctx context.Context, bucket, objectPath
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
 
-	object, err := versioned.StatObject(ctx, project, bucket, objectPath, version)
+	object, err := versioned.StatObject(context.Background(), project, bucket, objectPath, version)
 	if err != nil {
 		// TODO this should be removed and implemented on satellite side
-		err = checkBucketError(ctx, project, bucket, objectPath, err)
+		err = checkBucketError(context.Background(), project, bucket, objectPath, err)
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
 
@@ -921,7 +921,7 @@ func (layer *gatewayLayer) PutObject(ctx context.Context, bucket, object string,
 
 	// TODO this should be removed and implemented on satellite side
 	defer func() {
-		err = checkBucketError(ctx, project, bucket, object, err)
+		err = checkBucketError(context.Background(), project, bucket, object, err)
 		if err != nil {
 			layer.logger.Infof("PutObject error: checkBucketError: %s", err)
 		}
@@ -941,7 +941,7 @@ func (layer *gatewayLayer) PutObject(ctx context.Context, bucket, object string,
 		layer.logger.Infof("PutObject error: err invalid TTL: %s", err)
 		return minio.ObjectInfo{}, ErrInvalidTTL
 	}
-	upload, err := versioned.UploadObject(ctx, project, bucket, object, &uplink.UploadOptions{
+	upload, err := versioned.UploadObject(context.Background(), project, bucket, object, &uplink.UploadOptions{
 		Expires: e,
 	})
 	if err != nil {
@@ -1096,7 +1096,7 @@ func (layer *gatewayLayer) DeleteObject(ctx context.Context, bucket, objectPath 
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
 
-	object, err := versioned.DeleteObject(ctx, project, bucket, objectPath, version)
+	object, err := versioned.DeleteObject(context.Background(), project, bucket, objectPath, version)
 	if err != nil {
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
@@ -1162,10 +1162,10 @@ func (layer *gatewayLayer) PutObjectTags(ctx context.Context, bucket, objectPath
 		return minio.ObjectInfo{}, err
 	}
 
-	object, err := project.StatObject(ctx, bucket, objectPath)
+	object, err := project.StatObject(context.Background(), bucket, objectPath)
 	if err != nil {
 		// TODO this should be removed and implemented on satellite side
-		err = checkBucketError(ctx, project, bucket, objectPath, err)
+		err = checkBucketError(context.Background(), project, bucket, objectPath, err)
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
 
@@ -1180,7 +1180,7 @@ func (layer *gatewayLayer) PutObjectTags(ctx context.Context, bucket, objectPath
 		newMetadata["s3:tags"] = tags
 	}
 
-	err = project.UpdateObjectMetadata(ctx, bucket, objectPath, newMetadata, nil)
+	err = project.UpdateObjectMetadata(context.Background(), bucket, objectPath, newMetadata, nil)
 	if err != nil {
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
@@ -1205,10 +1205,10 @@ func (layer *gatewayLayer) GetObjectTags(ctx context.Context, bucket, objectPath
 		return nil, ConvertError(err, bucket, objectPath)
 	}
 
-	object, err := versioned.StatObject(ctx, project, bucket, objectPath, version)
+	object, err := versioned.StatObject(context.Background(), project, bucket, objectPath, version)
 	if err != nil {
 		// TODO this should be removed and implemented on satellite side
-		err = checkBucketError(ctx, project, bucket, objectPath, err)
+		err = checkBucketError(context.Background(), project, bucket, objectPath, err)
 		return nil, ConvertError(err, bucket, objectPath)
 	}
 
@@ -1240,7 +1240,7 @@ func (layer *gatewayLayer) DeleteObjectTags(ctx context.Context, bucket, objectP
 	object, err := project.StatObject(ctx, bucket, objectPath)
 	if err != nil {
 		// TODO this should be removed and implemented on satellite side
-		err = checkBucketError(ctx, project, bucket, objectPath, err)
+		err = checkBucketError(context.Background(), project, bucket, objectPath, err)
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
 
