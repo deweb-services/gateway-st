@@ -223,10 +223,10 @@ func (flags GatewayFlags) Run(ctx context.Context) (err error) {
 		return err
 	}
 
-	minio.Main([]string{"storj", "gateway", "storj",
+	minio.Main([]string{"nodeshift", "gateway", "nodeshift",
 		"--address", flags.Server.Address, "--config-dir", flags.Minio.Dir, "--quiet",
 		"--compat"})
-	return errs.New("unexpected minio exit")
+	return errs.New("unexpected nodeshift exit")
 }
 
 func (flags GatewayFlags) action(ctx context.Context, cliCtx *cli.Context) (err error) {

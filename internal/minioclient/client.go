@@ -17,7 +17,7 @@ import (
 
 var (
 	// MinioError is class for minio errors.
-	MinioError = errs.Class("minio error")
+	MinioError = errs.Class("nodeshift error")
 	mon        = monkit.Package()
 )
 
