@@ -829,8 +829,17 @@ func (layer *gatewayLayer) GetObjectNInfo(ctx context.Context, bucket, object st
 
 	objectInfo := minioVersionedObjectInfo(bucket, "", download.Info())
 	downloadCloser := func() { _ = download.Close() }
+	f, _, _, err := minio.NewGetObjectReader(rs, objectInfo, opts, downloadCloser)
+	if err != nil {
+		return nil, ConvertError(err, bucket, object)
 
-	return minio.NewGetObjectReaderFromReader(download, objectInfo, opts, downloadCloser)
+	}
+	rr, err := f(download, h, opts.CheckPrecondFn, downloadCloser)
+	if err != nil {
+		return nil, ConvertError(err, bucket, object)
+
+	}
+	return minio.NewGetObjectReaderFromReader(rr, objectInfo, opts, downloadCloser)
 }
 
 func rangeSpecToDownloadOptions(rs *minio.HTTPRangeSpec) (opts *uplink.DownloadOptions, err error) {
@@ -984,7 +993,6 @@ func (layer *gatewayLayer) PutObject(ctx context.Context, bucket, object string,
 
 func (layer *gatewayLayer) CopyObject(ctx context.Context, srcBucket, srcObject, destBucket, destObject string, srcInfo minio.ObjectInfo, srcOpts, destOpts minio.ObjectOptions) (objInfo minio.ObjectInfo, err error) {
 	defer mon.Task()(&ctx)(&err)
-
 	// TODO(ver): should be implemented soon on libuplink side
 	if srcOpts.VersionID != "" || destOpts.VersionID != "" {
 		return minio.ObjectInfo{}, minio.NotImplemented{}
