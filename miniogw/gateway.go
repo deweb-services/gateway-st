@@ -795,6 +795,10 @@ func (layer *gatewayLayer) ListObjectVersions(ctx context.Context, bucket, prefi
 	}, nil
 }
 
+func (layer *gatewayLayer) IsEncryptionSupported() bool {
+	return true
+}
+
 func (layer *gatewayLayer) GetObjectNInfo(ctx context.Context, bucket, object string, rs *minio.HTTPRangeSpec, h http.Header, lockType minio.LockType, opts minio.ObjectOptions) (reader *minio.GetObjectReader, err error) {
 	defer mon.Task()(&ctx)(&err)
 
@@ -829,16 +833,17 @@ func (layer *gatewayLayer) GetObjectNInfo(ctx context.Context, bucket, object st
 
 	objectInfo := minioVersionedObjectInfo(bucket, "", download.Info())
 	downloadCloser := func() { _ = download.Close() }
+
 	f, _, _, err := minio.NewGetObjectReader(rs, objectInfo, opts, downloadCloser)
 	if err != nil {
 		return nil, ConvertError(err, bucket, object)
-
 	}
+
 	rr, err := f(download, h, opts.CheckPrecondFn, downloadCloser)
 	if err != nil {
 		return nil, ConvertError(err, bucket, object)
-
 	}
+
 	return minio.NewGetObjectReaderFromReader(rr, objectInfo, opts, downloadCloser)
 }
 

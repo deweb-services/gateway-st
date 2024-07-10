@@ -14,15 +14,13 @@ require (
 	golang.org/x/term v0.11.0
 	storj.io/common v0.0.0-20231130134106-1fa84867e323
 	storj.io/gateway v1.9.0
-	storj.io/minio v0.0.0-20230901173759-f1d4dd341feb
+	storj.io/minio v0.0.0-20240620235917-ab8893f67859
 	storj.io/private v0.0.0-20230918125712-2a31a93e18ab
 	storj.io/uplink v1.12.3-0.20231205090325-b1a25d92efca
 )
 
 require (
 	git.apache.org/thrift.git v0.13.0 // indirect
-	github.com/Azure/azure-pipeline-go v0.2.2 // indirect
-	github.com/Azure/azure-storage-blob-go v0.10.0 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20200615164410-66371956d46c // indirect
 	github.com/Shopify/sarama v1.27.2 // indirect
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
@@ -82,7 +80,6 @@ require (
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
-	github.com/mattn/go-ieproxy v0.0.1 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
@@ -151,7 +148,6 @@ require (
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
-	google.golang.org/api v0.118.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/jcmturner/aescts.v1 v1.0.1 // indirect
