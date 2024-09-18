@@ -830,7 +830,17 @@ func (layer *gatewayLayer) GetObjectNInfo(ctx context.Context, bucket, object st
 	objectInfo := minioVersionedObjectInfo(bucket, "", download.Info())
 	downloadCloser := func() { _ = download.Close() }
 
-	return minio.NewGetObjectReaderFromReader(download, objectInfo, opts, downloadCloser)
+	f, _, _, err := minio.NewGetObjectReader(rs, objectInfo, opts, downloadCloser)
+	if err != nil {
+		return nil, ConvertError(err, bucket, object)
+	}
+
+	rr, err := f(download, h, opts.CheckPrecondFn, downloadCloser)
+	if err != nil {
+		return nil, ConvertError(err, bucket, object)
+	}
+
+	return minio.NewGetObjectReaderFromReader(rr, objectInfo, opts, downloadCloser)
 }
 
 func rangeSpecToDownloadOptions(rs *minio.HTTPRangeSpec) (opts *uplink.DownloadOptions, err error) {
