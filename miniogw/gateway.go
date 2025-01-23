@@ -830,7 +830,17 @@ func (layer *gatewayLayer) GetObjectNInfo(ctx context.Context, bucket, object st
 	objectInfo := minioVersionedObjectInfo(bucket, "", download.Info())
 	downloadCloser := func() { _ = download.Close() }
 
-	return minio.NewGetObjectReaderFromReader(download, objectInfo, opts, downloadCloser)
+	f, _, _, err := minio.NewGetObjectReader(rs, objectInfo, opts, downloadCloser)
+	if err != nil {
+		return nil, ConvertError(err, bucket, object)
+	}
+
+	rr, err := f(download, h, opts.CheckPrecondFn, downloadCloser)
+	if err != nil {
+		return nil, ConvertError(err, bucket, object)
+	}
+
+	return minio.NewGetObjectReaderFromReader(rr, objectInfo, opts, downloadCloser)
 }
 
 func rangeSpecToDownloadOptions(rs *minio.HTTPRangeSpec) (opts *uplink.DownloadOptions, err error) {
@@ -1050,33 +1060,17 @@ func (layer *gatewayLayer) CopyObject(ctx context.Context, srcBucket, srcObject,
 		return srcInfo, nil
 	}
 
-	object, err := project.CopyObject(ctx, srcBucket, srcObject, destBucket, destObject, nil)
-	if err != nil {
-		// TODO how we can improve it, its ugly
-		if errors.Is(err, uplink.ErrBucketNotFound) {
-			if strings.Contains(err.Error(), srcBucket) {
-				return minio.ObjectInfo{}, minio.BucketNotFound{Bucket: srcBucket}
-			} else if strings.Contains(err.Error(), destBucket) {
-				return minio.ObjectInfo{}, minio.BucketNotFound{Bucket: destBucket}
-			}
-		}
-		return minio.ObjectInfo{}, ConvertError(err, destBucket, destObject)
+	// https://github.com/minio/minio/blob/master/cmd/erasure-server-pool.go#L1348
+	putOpts := minio.ObjectOptions{
+		ServerSideEncryption: destOpts.ServerSideEncryption,
+		UserDefined:          srcInfo.UserDefined,
+		Versioned:            destOpts.Versioned,
+		VersionID:            destOpts.VersionID,
+		MTime:                destOpts.MTime,
+		NoLock:               true,
 	}
 
-	// TODO most probably we need better condition
-	if len(srcInfo.UserDefined) > 0 {
-		// TODO currently we need to set metadata as a separate step because we
-		// don't have a solution to not override ETag stored in custom metadata
-		upsertObjectMetadata(srcInfo.UserDefined, object.Custom)
-
-		err = project.UpdateObjectMetadata(ctx, destBucket, destObject, srcInfo.UserDefined, nil)
-		if err != nil {
-			return minio.ObjectInfo{}, ConvertError(err, destBucket, destObject)
-		}
-		object.Custom = uplink.CustomMetadata(srcInfo.UserDefined)
-	}
-
-	return minioObjectInfo(destBucket, "", object), nil
+	return layer.PutObject(ctx, destBucket, destObject, srcInfo.PutObjReader, putOpts)
 }
 
 func (layer *gatewayLayer) DeleteObject(ctx context.Context, bucket, objectPath string, opts minio.ObjectOptions) (objInfo minio.ObjectInfo, err error) {
