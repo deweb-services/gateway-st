@@ -795,6 +795,10 @@ func (layer *gatewayLayer) ListObjectVersions(ctx context.Context, bucket, prefi
 	}, nil
 }
 
+func (layer *gatewayLayer) IsEncryptionSupported() bool {
+	return true
+}
+
 func (layer *gatewayLayer) GetObjectNInfo(ctx context.Context, bucket, object string, rs *minio.HTTPRangeSpec, h http.Header, lockType minio.LockType, opts minio.ObjectOptions) (reader *minio.GetObjectReader, err error) {
 	defer mon.Task()(&ctx)(&err)
 
@@ -995,8 +999,8 @@ func (layer *gatewayLayer) PutObject(ctx context.Context, bucket, object string,
 func (layer *gatewayLayer) CopyObject(ctx context.Context, srcBucket, srcObject, destBucket, destObject string, srcInfo minio.ObjectInfo, srcOpts, destOpts minio.ObjectOptions) (objInfo minio.ObjectInfo, err error) {
 	defer mon.Task()(&ctx)(&err)
 
-	// TODO(ver): should be implemented soon on libuplink side
-	if srcOpts.VersionID != "" || destOpts.VersionID != "" {
+	// S3 doesn't support destination VersionID but let's handle this just in case
+	if destOpts.VersionID != "" {
 		return minio.ObjectInfo{}, minio.NotImplemented{}
 	}
 
@@ -1033,7 +1037,7 @@ func (layer *gatewayLayer) CopyObject(ctx context.Context, srcBucket, srcObject,
 		return minio.ObjectInfo{}, err
 	}
 
-	if srcAndDestSame {
+	if srcAndDestSame && srcInfo.VersionID == "" {
 		// TODO this should be removed and implemented on satellite side
 		_, err = project.StatBucket(ctx, srcBucket)
 		if err != nil {
