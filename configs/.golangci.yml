@@ -1,0 +1,85 @@
+run:
+  concurrency: 4
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+  build-tags:
+    - integration
+  exclude-dirs:
+    - proto
+    - vendor
+  exclude-files:
+    - ".*easyjson.*"
+    - ".*env2env.*"
+  modules-download-mode: vendor
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  interfacebloat:
+    max: 20
+  goimports:
+    local-prefixes: github.com/deweb-services
+  misspell:
+    locale: US
+  lll:
+    line-length: 150
+    tab-width: 4
+  unused:
+    check-exported: false
+
+linters:
+  enable-all: true
+  fast: false
+  disable:
+    - testpackage
+    - tagliatelle
+    - varnamelen
+    - gomnd
+    - nolintlint
+    - exhaustruct
+    - tagalign
+    - gomoddirectives
+    - depguard
+    - gci
+    # TODO: remove
+    - ireturn
+    - funlen
+    - gocognit
+    - cyclop
+    - wsl
+    - revive
+    - godox
+    # deprecated
+    - execinquery
+    - exportloopref
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - paralleltest
+        - maintidx
+        - dupl
+
+    - path: tests/.*_test\.go
+      linters:
+        - dupl
+        - maintidx
+        - goconst
+        - gosec
+
+    # TODO: remove
+    - path: gateway/s3x
+      linters:
+        - wrapcheck
+
+    - path: _mock\.go
+      linters:
+        - tagliatelle
+        - exhaustruct
+        - revive
