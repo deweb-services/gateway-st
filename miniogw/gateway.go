@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"sort"
+	"storj.io/private/version"
 	"strings"
 	"syscall"
 	"time"
@@ -25,11 +26,9 @@ import (
 	minio "storj.io/minio/cmd"
 	"storj.io/minio/cmd/config/storageclass"
 	xhttp "storj.io/minio/cmd/http"
-	"storj.io/minio/pkg/auth"
 	"storj.io/minio/pkg/bucket/versioning"
 	"storj.io/minio/pkg/hash"
 	"storj.io/minio/pkg/madmin"
-	"storj.io/private/version"
 	"storj.io/uplink"
 	"storj.io/uplink/private/bucket"
 	versioned "storj.io/uplink/private/object"
@@ -131,28 +130,9 @@ func (gateway *Gateway) Name() string {
 	return "storj"
 }
 
-// NewGatewayLayer implements cmd.Gateway.
-func (gateway *Gateway) NewGatewayLayer(logger debugLogger, creds auth.Credentials) (minio.ObjectLayer, error) {
-	return &gatewayLayer{
-		logger:              logger,
-		compatibilityConfig: gateway.compatibilityConfig,
-	}, nil
-}
-
 // Production implements cmd.Gateway.
 func (gateway *Gateway) Production() bool {
 	return version.Build.Release
-}
-
-type gatewayLayer struct {
-	logger debugLogger
-	minio.GatewayUnsupported
-	compatibilityConfig S3CompatibilityConfig
-}
-
-type debugLogger interface {
-	Info(args ...interface{})
-	Infof(format string, args ...interface{})
 }
 
 // Shutdown is a no-op.
@@ -253,7 +233,7 @@ func (layer *gatewayLayer) DeleteBucket(ctx context.Context, bucket string, forc
 		// Check if the bucket contains any non-pending objects. If it doesn't,
 		// this would mean there were initiated non-committed and non-aborted
 		// multipart uploads. Other S3 implementations allow deletion of such
-		// buckets, but with uplink, we need to explicitly force bucket
+		// access_keys, but with uplink, we need to explicitly force bucket
 		// deletion.
 		it := project.ListObjects(ctx, bucket, nil)
 		if !it.Next() && it.Err() == nil {
@@ -1485,7 +1465,7 @@ func limitResults(limit int, configuredLimit int) int {
 	if limit < 0 || limit >= configuredLimit {
 		// Return max results with a buffer to gather the continuation token to
 		// avoid paging problems until we have a method in libuplink to get more
-		// info about page boundaries.
+		// Info about page boundaries.
 		if configuredLimit-1 == 0 {
 			return 1
 		}

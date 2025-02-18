@@ -71,26 +71,7 @@ GOLANGCI_LINT_CONFIG_TESTSUITE ?= ../../ci/.golangci.yml
 
 .PHONY: lint
 lint: ## Lint
-	check-mod-tidy
-	check-copyright
-	check-large-files
-	check-imports -race ./...
-	check-peer-constraints -race
-	check-atomic-align ./...
-	check-monkit ./...
-	check-errs ./...
-	check-deferloop ./...
-	staticcheck ./...
-	golangci-lint run --print-resources-usage --config ${GOLANGCI_LINT_CONFIG}
-	check-downgrades
-
-	# A bit of an explanation around this shellcheck command:
-	# * Find all scripts recursively that have the .sh extension, except for "testsuite@tmp" which Jenkins creates temporarily
-	# * Use + instead of \ so find returns a non-zero exit if any invocation of shellcheck returns a non-zero exit
-	find . -path ./testsuite@tmp -prune -o -name "*.sh" -type f -exec "shellcheck" "-x" "--format=gcc" {} +;
-
-	# Execute lint-testsuite in testsuite directory:
-	$(MAKE) -C testsuite -f ../Makefile lint-testsuite
+	golangci-lint run --config configs/.golangci.yml
 
 .PHONY: lint-testsuite
 lint-testsuite: ## Lint testsuite
@@ -130,10 +111,6 @@ cross-vet: ## Cross-Vet
 JSON ?= false
 SHORT ?= true
 SKIP_TESTSUITE ?= false
-
-.PHONY: test
-test: test-testsuite ## Test
-	go test -json=${JSON} -p 16 -parallel 4 -race -short=${SHORT} -timeout 10m -vet=off ./...
 
 .PHONY: test-testsuite
 test-testsuite: ## Test testsuite
@@ -381,3 +358,32 @@ integration-services-start:
 		--minio.access-key "$$AWS_ACCESS_KEY_ID" \
 		--minio.secret-key "$$AWS_SECRET_ACCESS_KEY" \
 		--s3.fully-compatible-listing
+
+.PHONY: vendor
+vendor:
+	go mod tidy && go mod vendor
+
+
+.PHONY: mocks
+mocks:
+	go generate ./...
+
+.PHONY: generate
+generate: mocks ## generate mocks, proto etc
+
+.PHONY: compose-up
+compose-up:
+	@docker-compose up -d
+
+.PHONY: compose-down
+compose-down:
+	@docker-compose down
+
+.PHONY: test
+test:
+	go test -coverprofile=coverage.out -count=1 -race ./internal/...
+
+.PHONY: test-func
+test-func:
+	go test -coverprofile=coverage_func.out -count=1 -race ./tests/...
+

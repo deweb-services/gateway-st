@@ -88,7 +88,7 @@ func (client *Minio) RemoveBucket(ctx context.Context, bucket string) (err error
 	return nil
 }
 
-// ListBuckets lists all buckets.
+// ListBuckets lists all access_keys.
 func (client *Minio) ListBuckets(ctx context.Context) (names []string, err error) {
 	defer mon.Task()(&ctx)(&err)
 

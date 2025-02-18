@@ -3,6 +3,9 @@
 release/
 
 *.log
+coverage.out
+coverage_func.out
+vendor
 
 # Jetbrains
 .idea/
