@@ -42,7 +42,7 @@ type debugLogger interface {
 	Infof(format string, args ...interface{})
 }
 
-type Options struct {
+type (
 	Cloudflare struct {
 		APIToken string
 		ZoneID   string
@@ -54,7 +54,12 @@ type Options struct {
 	Mongo struct {
 		Connection string
 	}
-}
+	Options struct {
+		Cloudflare Cloudflare
+		Node       Node
+		Mongo      Mongo
+	}
+)
 
 // NewGatewayLayer implements cmd.Gateway.
 func (gateway *Gateway) NewGatewayLayer(logger debugLogger, opts Options) (cmd.ObjectLayer, error) {
