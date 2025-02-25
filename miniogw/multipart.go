@@ -40,10 +40,6 @@ func (layer *gatewayLayer) ListMultipartUploads(ctx context.Context, bucket, pre
 		return minio.ListMultipartsInfo{}, minio.NotImplemented{Message: fmt.Sprintf("Unsupported delimiter: %q", delimiter)}
 	}
 
-	// TODO this should be removed and implemented on satellite side
-	defer func() {
-		err = checkBucketError(ctx, project, bucket, "", err)
-	}()
 	recursive := delimiter == ""
 
 	list := project.ListUploads(ctx, bucket, &uplink.ListUploadsOptions{
@@ -51,7 +47,9 @@ func (layer *gatewayLayer) ListMultipartUploads(ctx context.Context, bucket, pre
 		Cursor:    strings.TrimPrefix(keyMarker, prefix),
 		Recursive: recursive,
 		System:    true,
-		Custom:    layer.compatibilityConfig.IncludeCustomMetadataListing,
+		// AWS S3 ListMultipartUploads doesn't include metadata in the response.
+		// https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListMultipartUploads.html
+		Custom: false,
 	})
 
 	var (
@@ -194,48 +192,6 @@ func (layer *gatewayLayer) PutObjectPart(ctx context.Context, bucket, object, up
 		ETag:         string(part.ETag),
 		LastModified: part.Modified,
 	}, nil
-}
-
-func (layer *gatewayLayer) GetMultipartInfo(ctx context.Context, bucket, object, uploadID string, opts minio.ObjectOptions) (info minio.MultipartInfo, err error) {
-	defer mon.Task()(&ctx)(&err)
-
-	if err := ValidateBucket(ctx, bucket); err != nil {
-		return minio.MultipartInfo{}, minio.BucketNameInvalid{Bucket: bucket}
-	}
-
-	if object == "" {
-		return minio.MultipartInfo{}, minio.ObjectNameInvalid{}
-	}
-
-	if uploadID == "" {
-		return minio.MultipartInfo{}, minio.InvalidUploadID{}
-	}
-
-	project, err := projectFromContext(ctx, bucket, object)
-	if err != nil {
-		return minio.MultipartInfo{}, err
-	}
-
-	info.Bucket = bucket
-	info.Object = object
-	info.UploadID = uploadID
-
-	list := project.ListUploads(ctx, bucket, &uplink.ListUploadsOptions{
-		Prefix: object,
-		System: true,
-		Custom: layer.compatibilityConfig.IncludeCustomMetadataListing,
-	})
-
-	for list.Next() {
-		obj := list.Item()
-		if obj.UploadID == uploadID {
-			return minioMultipartInfo(bucket, obj), nil
-		}
-	}
-	if list.Err() != nil {
-		return minio.MultipartInfo{}, ConvertError(list.Err(), bucket, object)
-	}
-	return minio.MultipartInfo{}, minio.ObjectNotFound{Bucket: bucket, Object: object}
 }
 
 func (layer *gatewayLayer) ListObjectParts(ctx context.Context, bucket, object, uploadID string, partNumberMarker int, maxParts int, opts minio.ObjectOptions) (result minio.ListPartsInfo, err error) {
@@ -409,7 +365,7 @@ func (layer *gatewayLayer) CompleteMultipartUpload(ctx context.Context, bucket, 
 	metadata = metadata.Clone()
 	metadata["s3:etag"] = etag
 
-	obj, err := versioned.CommitUpload(context.Background(), project, bucket, object, uploadID, &uplink.CommitUploadOptions{
+	obj, err := versioned.CommitUpload(ctx, project, bucket, object, uploadID, &uplink.CommitUploadOptions{
 		CustomMetadata: metadata,
 	})
 	if err != nil {
