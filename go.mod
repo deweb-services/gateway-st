@@ -7,18 +7,18 @@ toolchain go1.23.2
 require (
 	github.com/minio/cli v1.22.0
 	github.com/minio/minio-go/v7 v7.0.11-0.20210302210017-6ae69c73ce78
-	github.com/spacemonkeygo/monkit/v3 v3.0.22
+	github.com/spacemonkeygo/monkit/v3 v3.0.23
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
-	github.com/zeebo/errs v1.3.0
+	github.com/zeebo/errs v1.4.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/term v0.25.0
-	storj.io/common v0.0.0-20240812101423-26b53789c348
+	storj.io/common v0.0.0-20250207214808-37afb3c7daeb
 	storj.io/gateway v1.9.0
 	storj.io/minio v0.0.0-20230901173759-f1d4dd341feb
 	storj.io/private v0.0.0-20240221094147-0123b222a491
-	storj.io/uplink v1.13.1
+	storj.io/uplink v1.13.2-0.20250218103408-3179c8d1ccdb
 )
 
 require (

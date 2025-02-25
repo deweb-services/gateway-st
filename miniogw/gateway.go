@@ -1132,7 +1132,7 @@ func (layer *gatewayLayer) DeleteObject(ctx context.Context, bucket, objectPath 
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
 
-	object, err := versioned.DeleteObject(context.Background(), project, bucket, objectPath, version)
+	object, err := versioned.DeleteObject(ctx, project, bucket, objectPath, version, &metaclient.DeleteObjectOptions{})
 	if err != nil {
 		return minio.ObjectInfo{}, ConvertError(err, bucket, objectPath)
 	}
