@@ -27,7 +27,6 @@ import (
 	minio "storj.io/minio/cmd"
 	"storj.io/minio/cmd/config/storageclass"
 	xhttp "storj.io/minio/cmd/http"
-	"storj.io/minio/pkg/auth"
 	"storj.io/minio/pkg/bucket/versioning"
 	"storj.io/minio/pkg/hash"
 	"storj.io/minio/pkg/madmin"
@@ -187,7 +186,7 @@ func (gateway *Gateway) Name() string {
 }
 
 // NewGatewayLayer implements cmd.Gateway.
-func (gateway *Gateway) NewGatewayLayer(creds auth.Credentials) (minio.ObjectLayer, error) {
+func (gateway *Gateway) NewGatewayLayer() (minio.ObjectLayer, error) {
 	return &gatewayLayer{
 		compatibilityConfig: gateway.compatibilityConfig,
 	}, nil
@@ -902,6 +901,22 @@ func (layer *gatewayLayer) GetObjectNInfo(ctx context.Context, bucket, object st
 	objectInfo := minioVersionedObjectInfo(bucket, "", download.Info())
 	downloadCloser := func() { _ = download.Close() }
 
+	// sse-c case for regular files
+	if rs == nil {
+		f, _, _, err := minio.NewGetObjectReader(rs, objectInfo, opts, downloadCloser)
+		if err != nil {
+			return nil, ConvertError(err, bucket, object)
+		}
+
+		rr, err := f(download, h, opts.CheckPrecondFn, downloadCloser)
+		if err != nil {
+			return nil, ConvertError(err, bucket, object)
+		}
+
+		return minio.NewGetObjectReaderFromReader(rr, objectInfo, opts, downloadCloser)
+	}
+
+	// sse-c multipart files
 	return minio.NewGetObjectReaderFromReader(download, objectInfo, opts, downloadCloser)
 }
 
