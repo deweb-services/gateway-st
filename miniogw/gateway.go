@@ -32,6 +32,7 @@ import (
 	"storj.io/private/version"
 	"storj.io/uplink"
 	"storj.io/uplink/private/bucket"
+	uo "storj.io/uplink/private/object"
 	versioned "storj.io/uplink/private/object"
 )
 
@@ -951,7 +952,7 @@ func (layer *gatewayLayer) PutObject(ctx context.Context, bucket, object string,
 		layer.logger.Infof("PutObject error: err invalid TTL: %s", err)
 		return minio.ObjectInfo{}, ErrInvalidTTL
 	}
-	upload, err := versioned.UploadObject(context.Background(), project, bucket, object, &uplink.UploadOptions{
+	upload, err := versioned.UploadObject(context.Background(), project, bucket, object, &uo.UploadOptions{
 		Expires: e,
 	})
 	if err != nil {
