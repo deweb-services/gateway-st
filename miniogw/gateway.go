@@ -8,9 +8,11 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -25,7 +27,6 @@ import (
 	minio "storj.io/minio/cmd"
 	"storj.io/minio/cmd/config/storageclass"
 	xhttp "storj.io/minio/cmd/http"
-	"storj.io/minio/pkg/auth"
 	"storj.io/minio/pkg/bucket/versioning"
 	"storj.io/minio/pkg/hash"
 	"storj.io/minio/pkg/madmin"
@@ -34,6 +35,8 @@ import (
 	"storj.io/uplink/private/bucket"
 	uo "storj.io/uplink/private/object"
 	versioned "storj.io/uplink/private/object"
+
+	nodeshift "github.com/deweb-services/go-nodeshift/project"
 )
 
 var (
@@ -133,10 +136,17 @@ func (gateway *Gateway) Name() string {
 }
 
 // NewGatewayLayer implements cmd.Gateway.
-func (gateway *Gateway) NewGatewayLayer(logger debugLogger, creds auth.Credentials) (minio.ObjectLayer, error) {
+func (gateway *Gateway) NewGatewayLayer(logger debugLogger, bucket string) (minio.ObjectLayer, error) {
+	w := NewWorker(bucket)
+
+	go w.Run()
+
 	return &gatewayLayer{
 		logger:              logger,
 		compatibilityConfig: gateway.compatibilityConfig,
+
+		internalBucket: bucket,
+		worker:         w,
 	}, nil
 }
 
@@ -147,14 +157,21 @@ func (gateway *Gateway) Production() bool {
 
 type gatewayLayer struct {
 	logger debugLogger
+	worker worker
 	minio.GatewayUnsupported
 	compatibilityConfig S3CompatibilityConfig
+	internalBucket      string
 }
 
-type debugLogger interface {
-	Info(args ...interface{})
-	Infof(format string, args ...interface{})
-}
+type (
+	debugLogger interface {
+		Info(args ...interface{})
+		Infof(format string, args ...interface{})
+	}
+	worker interface {
+		Add(ctx context.Context) error
+	}
+)
 
 // Shutdown is a no-op.
 func (layer *gatewayLayer) Shutdown(ctx context.Context) (err error) {
@@ -173,16 +190,9 @@ func (layer *gatewayLayer) StorageInfo(ctx context.Context) (minio.StorageInfo, 
 func (layer *gatewayLayer) MakeBucketWithLocation(ctx context.Context, bucket string, opts minio.BucketOptions) (err error) {
 	defer mon.Task()(&ctx)(&err)
 
-	if err := ValidateBucket(ctx, bucket); err != nil {
-		return minio.BucketNameInvalid{Bucket: bucket}
-	}
-
-	project, err := projectFromContext(ctx, bucket, "")
-	if err != nil {
-		return err
-	}
-
-	_, err = project.CreateBucket(ctx, bucket)
+	_, err = layer.PutObject(ctx, layer.internalBucket, bucket, nil, minio.ObjectOptions{
+		UserDefined: map[string]string{"size": "0"},
+	})
 
 	return ConvertError(err, bucket, "")
 }
@@ -190,78 +200,67 @@ func (layer *gatewayLayer) MakeBucketWithLocation(ctx context.Context, bucket st
 func (layer *gatewayLayer) GetBucketInfo(ctx context.Context, bucketName string) (bucketInfo minio.BucketInfo, err error) {
 	defer mon.Task()(&ctx)(&err)
 
-	if err := ValidateBucket(ctx, bucketName); err != nil {
-		return minio.BucketInfo{}, minio.BucketNameInvalid{Bucket: bucketName}
+	o, err := layer.GetObjectInfo(ctx, layer.internalBucket, bucketName+"/", minio.ObjectOptions{})
+	if err != nil {
+		return minio.BucketInfo{}, fmt.Errorf("failed to get bucket info: %w", err)
 	}
 
-	project, err := projectFromContext(ctx, bucketName, "")
-	if err != nil {
-		return minio.BucketInfo{}, err
-	}
-
-	bucket, err := project.StatBucket(ctx, bucketName)
-	if err != nil {
-		return minio.BucketInfo{}, ConvertError(err, bucketName, "")
+	size := int64(0)
+	if o.UserDefined["size"] != "" {
+		var err error
+		size, err = strconv.ParseInt(o.UserDefined["size"], 10, 64)
+		if err != nil {
+			return minio.BucketInfo{}, fmt.Errorf("failed to convert size: %w", err)
+		}
 	}
 
 	return minio.BucketInfo{
-		Name:    bucket.Name,
-		Created: bucket.Created,
+		Name:    o.Name,
+		Created: o.ModTime,
+		Size:    size,
 	}, nil
 }
 
-func (layer *gatewayLayer) ListBuckets(ctx context.Context) (items []minio.BucketInfo, err error) {
-	defer mon.Task()(&ctx)(&err)
-
-	project, err := projectFromContext(ctx, "", "")
-	if err != nil {
-		return nil, err
+func (layer *gatewayLayer) ListBuckets(ctx context.Context) (_ []minio.BucketInfo, err error) {
+	projectUUID, ok := nodeshift.GetProjectUUID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("failed to get project uuid: %w", ErrProjectNotDefined)
 	}
 
-	buckets := project.ListBuckets(ctx, nil)
-	for buckets.Next() {
-		info := buckets.Item()
-		items = append(items, minio.BucketInfo{
-			Name:    info.Name,
-			Created: info.Created,
+	objects, err := layer.ListObjects(ctx, layer.internalBucket, projectUUID+"/", "", "/", 10000)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list objects: %w", err)
+	}
+
+	resp := make([]minio.BucketInfo, 0, len(objects.Objects))
+	for _, o := range objects.Objects {
+		size := int64(0)
+		if o.UserDefined["size"] != "" {
+			var err error
+			size, err = strconv.ParseInt(o.UserDefined["size"], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert size: %w", err)
+			}
+		}
+
+		resp = append(resp, minio.BucketInfo{
+			Name:    o.Name,
+			Created: o.ModTime,
+			Size:    size,
 		})
 	}
-	if buckets.Err() != nil {
-		return nil, ConvertError(buckets.Err(), "", "")
+
+	if err := layer.worker.Add(ctx); err != nil {
+		return nil, fmt.Errorf("failed to push data to worker: %w", err)
 	}
-	return items, nil
+
+	return resp, nil
 }
 
 func (layer *gatewayLayer) DeleteBucket(ctx context.Context, bucket string, forceDelete bool) (err error) {
 	defer mon.Task()(&ctx)(&err)
 
-	if err := ValidateBucket(ctx, bucket); err != nil {
-		return minio.BucketNameInvalid{Bucket: bucket}
-	}
-
-	project, err := projectFromContext(ctx, bucket, "")
-	if err != nil {
-		return err
-	}
-
-	if forceDelete {
-		_, err = project.DeleteBucketWithObjects(ctx, bucket)
-		return ConvertError(err, bucket, "")
-	}
-
-	_, err = project.DeleteBucket(ctx, bucket)
-	if errs.Is(err, uplink.ErrBucketNotEmpty) {
-		// Check if the bucket contains any non-pending objects. If it doesn't,
-		// this would mean there were initiated non-committed and non-aborted
-		// multipart uploads. Other S3 implementations allow deletion of such
-		// buckets, but with uplink, we need to explicitly force bucket
-		// deletion.
-		it := project.ListObjects(ctx, bucket, nil)
-		if !it.Next() && it.Err() == nil {
-			_, err = project.DeleteBucketWithObjects(ctx, bucket)
-			return ConvertError(err, bucket, "")
-		}
-	}
+	_, err = layer.DeleteObject(ctx, layer.internalBucket, bucket, minio.ObjectOptions{})
 
 	return ConvertError(err, bucket, "")
 }

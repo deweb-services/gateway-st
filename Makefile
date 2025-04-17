@@ -381,3 +381,7 @@ integration-services-start:
 		--minio.access-key "$$AWS_ACCESS_KEY_ID" \
 		--minio.secret-key "$$AWS_SECRET_ACCESS_KEY" \
 		--s3.fully-compatible-listing
+
+.PHONY: vendor
+vendor:
+	go mod tidy && go mod vendor
